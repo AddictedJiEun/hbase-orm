@@ -25,4 +25,7 @@ public interface HBRecord<R extends Serializable & Comparable<R>> extends Serial
      */
     void parseRowKey(R rowKey);
 
+    default Long timestamp() {
+        return null;
+    }
 }

@@ -347,6 +347,9 @@ public class HBObjectMapper {
 
     <R extends Serializable & Comparable<R>, T extends HBRecord<R>> Put writeValueAsPut0(T record) {
         Put put = new Put(composeRowKey(record));
+        if (record.timestamp() != null) {
+            put.setTimestamp(record.timestamp());
+        }
         for (Map.Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> fe : convertRecordToMap(record).entrySet()) {
             byte[] family = fe.getKey();
             for (Map.Entry<byte[], NavigableMap<Long, byte[]>> e : fe.getValue().entrySet()) {
