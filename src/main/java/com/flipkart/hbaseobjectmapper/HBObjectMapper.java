@@ -254,6 +254,8 @@ public class HBObjectMapper {
      */
     @SuppressWarnings("unchecked")
     private <R extends Serializable & Comparable<R>, T extends HBRecord<R>>
+    // family -> column -> value
+    // key分别为 familyName, columnName, timestamp
     NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> convertRecordToMap(T record) {
         Class<T> clazz = (Class<T>) record.getClass();
         Collection<Field> fields = getHBColumnFields0(clazz).values();
@@ -261,18 +263,26 @@ public class HBObjectMapper {
         int numOfFieldsToWrite = 0;
         for (Field field : fields) {
             WrappedHBColumn hbColumn = new WrappedHBColumn(field);
+            // 单个版本
             if (hbColumn.isSingleVersioned()) {
+                // familyName
                 byte[] familyName = hbColumn.familyBytes(), columnName = hbColumn.columnBytes();
                 if (!map.containsKey(familyName)) {
                     map.put(familyName, new TreeMap<>(Bytes.BYTES_COMPARATOR));
                 }
+                // columns
                 Map<byte[], NavigableMap<Long, byte[]>> columns = map.get(familyName);
                 final byte[] fieldValueBytes = getFieldValueAsBytes(record, field, hbColumn.codecFlags());
                 if (fieldValueBytes == null || fieldValueBytes.length == 0) {
                     continue;
                 }
+                // values, 判断是否使用record中的timestamp
                 NavigableMap<Long, byte[]> singleValue = new TreeMap<>();
-                singleValue.put(HConstants.LATEST_TIMESTAMP, fieldValueBytes);
+                if (record.timestamp() != null) {
+                    singleValue.put(record.timestamp(), fieldValueBytes);
+                } else {
+                    singleValue.put(HConstants.LATEST_TIMESTAMP, fieldValueBytes);
+                }
                 columns.put(columnName, singleValue);
                 numOfFieldsToWrite++;
             } else if (hbColumn.isMultiVersioned()) {
